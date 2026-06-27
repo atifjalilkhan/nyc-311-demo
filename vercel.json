@@ -1,10 +1,17 @@
 {
   "version": 2,
   "name": "nyc-311-demo",
-  "maxDuration": 60,
   "rewrites": [
     { "source": "/311/chat",            "destination": "/api/chat" },
     { "source": "/311/reset",           "destination": "/api/reset" },
     { "source": "/311/track/:srNumber", "destination": "/api/track/:srNumber" }
-  ]
+  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
+    },
+    "api/track/*.js": {
+      "maxDuration": 60
+    }
+  }
 }
