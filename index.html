@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NYC 311 — AI Service Request Portal</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --nyc-blue: #003DA5;
+      --nyc-dark: #1a1a2e;
+      --nyc-orange: #FF6320;
+      --nyc-light: #f0f4ff;
+      --nyc-mid: #e8edf8;
+      --chat-bg: #ffffff;
+      --radius: 12px;
+      --shadow: 0 4px 24px rgba(0,61,165,0.12);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--nyc-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: var(--nyc-blue);
+      color: white;
+      padding: 0;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .nyc-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: white;
+    }
+
+    .nyc-logo-mark {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 18px;
+      color: var(--nyc-blue);
+      letter-spacing: -1px;
+    }
+
+    .nyc-logo-text { font-size: 13px; line-height: 1.3; }
+    .nyc-logo-text strong { display: block; font-size: 16px; }
+
+    .header-badge {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .header-hero {
+      padding: 24px;
+      text-align: center;
+    }
+
+    .header-hero h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .header-hero p {
+      font-size: 14px;
+      opacity: 0.85;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    /* ── Services strip ─────────────────────────────────── */
+    .services-strip {
+      background: var(--nyc-mid);
+      border-bottom: 1px solid #d0d9ee;
+      padding: 10px 16px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .services-strip::-webkit-scrollbar { display: none; }
+
+    .service-chip {
+      background: white;
+      border: 1px solid #c5d0e8;
+      border-radius: 20px;
+      padding: 5px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+      color: var(--nyc-blue);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .service-chip:hover {
+      background: var(--nyc-blue);
+      color: white;
+      border-color: var(--nyc-blue);
+    }
+
+    /* ── Main layout ────────────────────────────────────── */
+    main {
+      flex: 1;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ── Chat panel ─────────────────────────────────────── */
+    .chat-panel {
+      flex: 1;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 600px;
+    }
+
+    .chat-header {
+      background: linear-gradient(135deg, var(--nyc-blue) 0%, #0052CC 100%);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ai-avatar {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .chat-header-info { color: white; }
+    .chat-header-info h3 { font-size: 15px; font-weight: 600; }
+    .chat-header-info p { font-size: 12px; opacity: 0.8; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      background: #22c55e;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── Messages ───────────────────────────────────────── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      display: flex;
+      gap: 10px;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .msg.user { flex-direction: row-reverse; }
+
+    .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .msg.bot .msg-avatar {
+      background: var(--nyc-blue);
+      color: white;
+    }
+
+    .msg.user .msg-avatar {
+      background: #e0e7ff;
+      color: var(--nyc-blue);
+    }
+
+    .msg-bubble {
+      max-width: 78%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .msg.bot .msg-bubble {
+      background: var(--nyc-light);
+      border: 1px solid #dde5f5;
+      border-bottom-left-radius: 4px;
+      color: #1a1a2e;
+    }
+
+    .msg.user .msg-bubble {
+      background: var(--nyc-blue);
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .msg.bot .msg-bubble.success {
+      background: #f0fdf4;
+      border-color: #86efac;
+    }
+
+    /* ── SR Card ─────────────────────────────────────────── */
+    .sr-card {
+      background: linear-gradient(135deg, #003DA5 0%, #0052CC 100%);
+      color: white;
+      border-radius: 10px;
+      padding: 16px;
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .sr-card .sr-label { font-size: 11px; opacity: 0.8; letter-spacing: 1px; text-transform: uppercase; }
+    .sr-card .sr-number { font-size: 24px; font-weight: 700; letter-spacing: 2px; margin: 4px 0; }
+    .sr-card .sr-agency { font-size: 12px; opacity: 0.85; }
+
+    /* ── Typing indicator ───────────────────────────────── */
+    .typing {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .typing-dots {
+      background: var(--nyc-light);
+      border: 1px solid #dde5f5;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .typing-dots span {
+      width: 6px; height: 6px;
+      background: #93a6d8;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
+    }
+
+    /* ── Input area ─────────────────────────────────────── */
+    .chat-input-area {
+      border-top: 1px solid #e8edf8;
+      padding: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      background: white;
+    }
+
+    #userInput {
+      flex: 1;
+      border: 1.5px solid #c5d0e8;
+      border-radius: 10px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      transition: border-color 0.15s;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.4;
+      color: #1a1a2e;
+    }
+
+    #userInput:focus { border-color: var(--nyc-blue); }
+
+    #sendBtn {
+      background: var(--nyc-blue);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    #sendBtn:hover { background: #0052CC; }
+    #sendBtn:active { transform: scale(0.95); }
+    #sendBtn:disabled { background: #93a6d8; cursor: not-allowed; }
+
+    #resetBtn {
+      background: none;
+      border: 1.5px solid #c5d0e8;
+      border-radius: 10px;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      color: #6b7a99;
+      font-size: 16px;
+      transition: all 0.15s;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #resetBtn:hover { border-color: var(--nyc-blue); color: var(--nyc-blue); }
+
+    /* ── Info sidebar ───────────────────────────────────── */
+    .info-panel {
+      width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .info-card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .info-card h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--nyc-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--nyc-mid);
+    }
+
+    .agency-list { list-style: none; }
+
+    .agency-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--nyc-mid);
+      font-size: 13px;
+    }
+    .agency-item:last-child { border-bottom: none; }
+
+    .agency-badge {
+      background: var(--nyc-blue);
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .agency-label { color: #444; line-height: 1.3; }
+
+    .quick-tips { list-style: none; }
+    .quick-tips li {
+      display: flex;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 13px;
+      color: #555;
+      border-bottom: 1px solid var(--nyc-mid);
+      line-height: 1.4;
+    }
+    .quick-tips li:last-child { border-bottom: none; }
+    .quick-tip-icon { flex-shrink: 0; }
+
+    .track-form { display: flex; flex-direction: column; gap: 8px; }
+    .track-form input {
+      border: 1.5px solid #c5d0e8;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+    .track-form input:focus { border-color: var(--nyc-blue); }
+    .track-form button {
+      background: var(--nyc-blue);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .track-form button:hover { background: #0052CC; }
+    #track-result {
+      font-size: 12px;
+      padding: 8px;
+      border-radius: 6px;
+      display: none;
+    }
+    #track-result.found { background: #f0fdf4; border: 1px solid #86efac; color: #15803d; }
+    #track-result.notfound { background: #fff1f2; border: 1px solid #fca5a5; color: #b91c1c; }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+      background: var(--nyc-blue);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 14px;
+      font-size: 12px;
+    }
+    footer a { color: rgba(255,255,255,0.9); text-decoration: none; }
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 768px) {
+      main { flex-direction: column; padding: 12px; }
+      .info-panel { width: 100%; flex-direction: row; overflow-x: auto; }
+      .info-card { min-width: 260px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────── -->
+<header>
+  <div class="header-top">
+    <a class="nyc-logo" href="#">
+      <div class="nyc-logo-mark">NYC</div>
+      <div class="nyc-logo-text">
+        <strong>NYC 311</strong>
+        Office of Technology &amp; Innovation
+      </div>
+    </a>
+    <span class="header-badge">🤖 AI-Powered</span>
+  </div>
+  <div class="header-hero">
+    <h1>NYC 311 — Service Request Portal</h1>
+    <p>Report city issues, request services, and track your case — powered by AI for faster intake.</p>
+  </div>
+</header>
+
+<!-- ── Service chips ────────────────────────────────────── -->
+<div class="services-strip">
+  <span class="service-chip" onclick="quickStart('Noise complaint')">🔊 Noise</span>
+  <span class="service-chip" onclick="quickStart('Illegal parking')">🚗 Parking</span>
+  <span class="service-chip" onclick="quickStart('Street light is out')">💡 Street Light</span>
+  <span class="service-chip" onclick="quickStart('There is a pothole')">🕳️ Pothole</span>
+  <span class="service-chip" onclick="quickStart('No heat or hot water')">🔥 Heat/Water</span>
+  <span class="service-chip" onclick="quickStart('Trash or sanitation issue')">🗑️ Sanitation</span>
+  <span class="service-chip" onclick="quickStart('Graffiti removal needed')">🎨 Graffiti</span>
+  <span class="service-chip" onclick="quickStart('Street flooding')">🌊 Flooding</span>
+  <span class="service-chip" onclick="quickStart('Building or construction complaint')">🏗️ Construction</span>
+  <span class="service-chip" onclick="quickStart('General service request')">📋 General</span>
+</div>
+
+<!-- ── Main ─────────────────────────────────────────────── -->
+<main>
+
+  <!-- Chat Panel -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="ai-avatar">🗽</div>
+      <div class="chat-header-info">
+        <h3>NYC 311 AI Assistant</h3>
+        <p><span class="status-dot"></span>Online — English · Español · 中文 · Русский · বাংলা</p>
+      </div>
+    </div>
+
+    <div id="messages"></div>
+
+    <div class="chat-input-area">
+      <button id="resetBtn" title="Start new request" onclick="resetChat()">↺</button>
+      <textarea id="userInput" rows="1" placeholder="Describe your issue or type your response…"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="sendBtn" onclick="sendMessage()" title="Send">➤</button>
+    </div>
+  </div>
+
+  <!-- Info Sidebar -->
+  <div class="info-panel">
+
+    <div class="info-card">
+      <h3>Agency Routing</h3>
+      <ul class="agency-list">
+        <li class="agency-item"><span class="agency-badge">NYPD</span><span class="agency-label">Noise, Illegal Parking</span></li>
+        <li class="agency-item"><span class="agency-badge">DOT</span><span class="agency-label">Street Lights, Potholes</span></li>
+        <li class="agency-item"><span class="agency-badge">HPD</span><span class="agency-label">Heat &amp; Hot Water</span></li>
+        <li class="agency-item"><span class="agency-badge">DSNY</span><span class="agency-label">Sanitation, Graffiti</span></li>
+        <li class="agency-item"><span class="agency-badge">DEP</span><span class="agency-label">Street Flooding</span></li>
+        <li class="agency-item"><span class="agency-badge">DOB</span><span class="agency-label">Construction Issues</span></li>
+        <li class="agency-item"><span class="agency-badge">OTI</span><span class="agency-label">General Requests</span></li>
+      </ul>
+    </div>
+
+    <div class="info-card">
+      <h3>Track a Request</h3>
+      <div class="track-form">
+        <input type="text" id="trackInput" placeholder="SR Number (e.g. 311-12345678-01)" />
+        <button onclick="trackRequest()">🔍 Look Up</button>
+        <div id="track-result"></div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <h3>Tips</h3>
+      <ul class="quick-tips">
+        <li><span class="quick-tip-icon">📍</span>Include full address &amp; borough for faster routing.</li>
+        <li><span class="quick-tip-icon">⚡</span>Flooding, No Heat, and Noise get priority 24-hr response.</li>
+        <li><span class="quick-tip-icon">📞</span>For emergencies, always call 911 first.</li>
+        <li><span class="quick-tip-icon">🌐</span>Callback available in 10+ languages.</li>
+      </ul>
+    </div>
+
+  </div>
+</main>
+
+<!-- ── Footer ───────────────────────────────────────────── -->
+<footer>
+  NYC 311 AI Intake System — <a href="https://www1.nyc.gov/311/" target="_blank">nyc.gov/311</a> |
+  Powered by <strong>Bilqees Technology Solutions Inc.</strong> (BTS) · NYC &amp; NYS MBE Certified |
+  For tech emergencies call <strong>311</strong>
+</footer>
+
+<script>
+  // ── Config ─────────────────────────────────────────────
+  const NGROK_URL   = window.NGROK_URL || 'https://bts-demos.ngrok.app';
+  const CHAT_URL    = `${NGROK_URL}/311/chat`;
+  const RESET_URL   = `${NGROK_URL}/311/reset`;
+  const TRACK_URL   = `${NGROK_URL}/311/track`;
+
+  let sessionId = generateSession();
+  let isLoading = false;
+
+  function generateSession() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+
+  // ── On load: show welcome message ──────────────────────
+  window.onload = () => {
+    showWelcome();
+  };
+
+  function showWelcome() {
+    const welcome = `Hello! I'm your NYC 311 AI Assistant. 👋\n\n` +
+      `I can help you submit service requests for:\n` +
+      `• Noise complaints → NYPD\n` +
+      `• Illegal parking → NYPD\n` +
+      `• Street lights out → DOT\n` +
+      `• Potholes → DOT\n` +
+      `• Heat/hot water issues → HPD\n` +
+      `• Sanitation & graffiti → DSNY\n` +
+      `• Street flooding → DEP\n` +
+      `• Construction complaints → DOB\n\n` +
+      `What issue can I help you report today?`;
+    addMessage('bot', welcome);
+  }
+
+  // ── Send message ───────────────────────────────────────
+  async function sendMessage() {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text || isLoading) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    addMessage('user', text);
+    setLoading(true);
+
+    try {
+      const res = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, message: text })
+      });
+
+      const data = await res.json();
+      removeTyping();
+
+      if (data.submitted && data.srNumber) {
+        addMessage('bot', data.reply, true, data);
+      } else {
+        addMessage('bot', data.reply || data.error || 'Sorry, something went wrong.');
+      }
+    } catch (err) {
+      removeTyping();
+      addMessage('bot', '⚠️ Connection error. Please try again or call 311 directly.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Add message bubble ─────────────────────────────────
+  function addMessage(role, text, isSuccess = false, srData = null) {
+    const msgs = document.getElementById('messages');
+
+    const msg = document.createElement('div');
+    msg.className = `msg ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.textContent = role === 'bot' ? '🗽' : '👤';
+
+    const bubble = document.createElement('div');
+    bubble.className = `msg-bubble${isSuccess ? ' success' : ''}`;
+    bubble.textContent = text;
+
+    // SR Card for successful submissions
+    if (isSuccess && srData?.srNumber) {
+      const card = document.createElement('div');
+      card.className = 'sr-card';
+      card.innerHTML = `
+        <div class="sr-label">Service Request Number</div>
+        <div class="sr-number">${srData.srNumber}</div>
+        <div class="sr-agency">Routed to: ${srData.agencyFullName || srData.routedAgency} · Priority: ${srData.priority}</div>
+      `;
+      bubble.appendChild(card);
+    }
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    msgs.appendChild(msg);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  // ── Typing indicator ────────────────────────────────────
+  function setLoading(on) {
+    isLoading = on;
+    document.getElementById('sendBtn').disabled = on;
+    document.getElementById('userInput').disabled = on;
+
+    if (on) {
+      const msgs = document.getElementById('messages');
+      const t = document.createElement('div');
+      t.className = 'typing';
+      t.id = 'typing-indicator';
+      t.innerHTML = `
+        <div class="msg-avatar" style="background:var(--nyc-blue);color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🗽</div>
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      `;
+      msgs.appendChild(t);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing-indicator');
+    if (t) t.remove();
+  }
+
+  // ── Quick start from service chips ─────────────────────
+  async function quickStart(text) {
+    document.getElementById('userInput').value = text;
+    await sendMessage();
+  }
+
+  // ── Reset chat ─────────────────────────────────────────
+  async function resetChat() {
+    try {
+      await fetch(RESET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+    } catch {}
+    sessionId = generateSession();
+    document.getElementById('messages').innerHTML = '';
+    showWelcome();
+  }
+
+  // ── Track request ──────────────────────────────────────
+  async function trackRequest() {
+    const srNum = document.getElementById('trackInput').value.trim();
+    const result = document.getElementById('track-result');
+    if (!srNum) return;
+
+    result.style.display = 'none';
+
+    try {
+      const res = await fetch(`${TRACK_URL}/${srNum}`);
+      const data = await res.json();
+
+      if (res.ok && data.srNumber) {
+        result.className = 'found';
+        result.textContent = `SR ${data.srNumber}: ${data.status} — ${data.complaintType?.replace(/_/g,' ')} at ${data.address}`;
+      } else {
+        result.className = 'notfound';
+        result.textContent = `SR number "${srNum}" not found. Check the number and try again.`;
+      }
+    } catch {
+      result.className = 'notfound';
+      result.textContent = 'Unable to look up request. Try again.';
+    }
+    result.style.display = 'block';
+  }
+
+  // ── Keyboard / textarea helpers ────────────────────────
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }
+</script>
+</body>
+</html>

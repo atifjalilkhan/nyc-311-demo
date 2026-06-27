@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "name": "nyc-311-demo",
+  "public": true,
+  "maxDuration": 60,
+  "rewrites": [
+    { "source": "/311/chat",            "destination": "/api/chat" },
+    { "source": "/311/reset",           "destination": "/api/reset" },
+    { "source": "/311/track/:srNumber", "destination": "/api/track/:srNumber" }
+  ],
+  "env": {
+    "NGROK_URL": "https://bts-demos.ngrok.app"
+  }
+}
